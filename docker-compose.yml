@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bi_challenge_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: atendas_bi
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: atendas_secure_pass
+    volumes:
+      - ./db_init:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atendas_bi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  superset:
+    image: apache/superset:3.1.0
+    container_name: bi_challenge_superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=atendas_secret_key_for_bi_challenge_123456
+      - SUPERSET_HOME=/app/superset_home
+    volumes:
+      - superset_home:/app/superset_home
+      - ./superset_init.sh:/app/superset_init.sh
+    entrypoint: ["/bin/bash", "/app/superset_init.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  superset_home:
